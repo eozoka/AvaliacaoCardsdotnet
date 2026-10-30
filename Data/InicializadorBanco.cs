@@ -16,12 +16,18 @@ public static class InicializadorBanco
         {
             var conexao = banco.Database.GetDbConnection();
 
-            using var consulta = conexao.CreateCommand();
-
             // verifica se a tabela já existe no schema do usuário conectado
-            consulta.CommandText = "SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME = 'AC_AVALIACOES'";
+            using var consultaTabela = conexao.CreateCommand();
 
-            if (Convert.ToInt32(consulta.ExecuteScalar()) == 0)
+            consultaTabela.CommandText = """
+                SELECT COUNT(*)
+                FROM USER_TABLES
+                WHERE TABLE_NAME = 'AC_AVALIACOES'
+                """;
+
+            bool tabelaExiste = Convert.ToInt32(consultaTabela.ExecuteScalar()) > 0;
+
+            if (!tabelaExiste)
             {
                 CriarTabela(conexao);
                 Console.WriteLine("Tabela AC_AVALIACOES criada.");
@@ -31,28 +37,38 @@ public static class InicializadorBanco
                 Console.WriteLine("Tabela AC_AVALIACOES encontrada.");
             }
 
-            // testa se a estrutura da tabela é compatível com a entidade do Entity Framework
-            banco.Avaliacoes.AsNoTracking().Take(1).ToList();
-
-            using var restricao = conexao.CreateCommand();
+            // verifica se a estrutura da tabela é compatível com a entidade do Entity Framework
+            banco.Avaliacoes
+                .AsNoTracking()
+                .Take(1)
+                .ToList();
 
             // verifica se a restrição UNIQUE existe e está habilitada no banco
-            restricao.CommandText = """
-                SELECT COUNT(*) FROM USER_CONSTRAINTS
+            using var consultaRestricao = conexao.CreateCommand();
+
+            consultaRestricao.CommandText = """
+                SELECT COUNT(*)
+                FROM USER_CONSTRAINTS
                 WHERE TABLE_NAME = 'AC_AVALIACOES'
                   AND CONSTRAINT_NAME = 'AC_UQ_AVALIADOR_CARD'
-                  AND CONSTRAINT_TYPE = 'U' AND STATUS = 'ENABLED'
+                  AND CONSTRAINT_TYPE = 'U'
+                  AND STATUS = 'ENABLED'
                 """;
 
-            if (Convert.ToInt32(restricao.ExecuteScalar()) != 1)
+            bool restricaoExiste =
+                Convert.ToInt32(consultaRestricao.ExecuteScalar()) == 1;
+
+            if (!restricaoExiste)
             {
-                throw new InvalidOperationException("A tabela AC_AVALIACOES precisa da restrição UNIQUE AC_UQ_AVALIADOR_CARD. Solicite a adequação da estrutura existente.");
+                throw new InvalidOperationException(
+                    "A tabela AC_AVALIACOES precisa da restrição UNIQUE AC_UQ_AVALIADOR_CARD. Solicite a adequação da estrutura existente.");
             }
         }
         // identifica erros de estrutura, como colunas inexistentes ou incompatíveis
         catch (OracleException erro) when (erro.Number == 904)
         {
-            throw new InvalidOperationException("A tabela AC_AVALIACOES tem uma estrutura incompatível. Use um schema destinado a esta versão ou solicite a migração da tabela existente.");
+            throw new InvalidOperationException(
+                "A tabela AC_AVALIACOES tem uma estrutura incompatível. Use um schema destinado a esta versão ou solicite a migração da tabela existente.");
         }
         finally
         {
