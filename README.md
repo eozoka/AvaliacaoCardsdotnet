@@ -1,6 +1,9 @@
 # Nexo Nuclear - Avaliação de Cartões
+
 ## Grupo e integrantes
-Grupo: **Nexo Nuclear**.
+
+Grupo: **Nexo Nuclear**
+
 | Nome | RM | Turma |
 |---|---|---|
 | Murillo Kenzo | RM566948 | 2TDSPA |
@@ -8,43 +11,68 @@ Grupo: **Nexo Nuclear**.
 | Cauã Rocha | RM567593 | 2TDSPR |
 | Gustavo Souza | RM567134 | 2TDSPR |
 
-## Solução
-Cartões educativos apresentam aplicações da tecnologia nuclear em linguagem acessível. O console registra notas e comentários dos leitores para ajudar o grupo a melhorar os conteúdos.
+## Sobre a solução
 
-## O que foi desenvolvido nesta Sprint
-Cadastro de avaliações, listagem completa, busca por código do cartão e cálculo da média. Há validação de campos, comentário opcional e bloqueio de uma segunda avaliação do mesmo nome para o mesmo cartão, sem diferenciar maiúsculas/minúsculas. Erros são tratados para permitir novas tentativas no menu.
+Os cartões educativos apresentam aplicações da tecnologia nuclear de forma acessível e didática. Para acompanhar a experiência dos leitores, desenvolvemos uma aplicação que permite registrar notas e comentários sobre os conteúdos, ajudando o grupo a identificar possíveis melhorias.
 
-## Como o .NET se aplica à solução
-O .NET implementa a coleta de feedback sobre os cartões, enquanto a API Java gerencia seus conteúdos e perguntas educativas. Notas e comentários permitem identificar explicações que precisam de revisão. A aplicação console usa EF Core com Oracle para manter as avaliações entre execuções; o código do cartão é informado manualmente, sem depender de uma chamada à API Java.
+## Funcionalidades desenvolvidas nesta Sprint
 
-## Arquitetura
-`Entities/`: entidade Avaliacao e constantes de MensagensValidacao; `Services/AvaliacaoService.cs`: cadastro, consultas e regras, com métodos assíncronos e acesso pelo campo `_context`; `Data/`: mapeamento EF Core e criação da tabela ausente; `Program.cs`: conexão, menu e entrada/saída.
+Nesta Sprint, foram implementadas as seguintes funcionalidades:
+
+- Cadastro de avaliações com nota e comentário opcional.
+- Listagem de todas as avaliações registradas.
+- Busca de avaliações pelo código do cartão.
+- Cálculo da média das notas de cada cartão.
+- Validação dos dados informados pelo usuário.
+- Impedimento de avaliações duplicadas pelo mesmo nome no mesmo cartão, independentemente de letras maiúsculas ou minúsculas.
+- Tratamento de erros para permitir que o usuário continue utilizando o menu após uma operação inválida.
+
+## Aplicação do .NET na solução
+
+O .NET é utilizado para implementar o sistema de feedback dos cartões educativos, enquanto a API Java é responsável pelo gerenciamento dos conteúdos e das perguntas educativas.
+
+As avaliações registradas permitem identificar quais conteúdos possuem boa aceitação e quais explicações podem precisar de ajustes.
+
+A aplicação utiliza C# com Entity Framework Core e Oracle para armazenar os dados de forma persistente. O código do cartão é informado diretamente pelo usuário, sem necessidade de realizar uma chamada à API Java.
+
+## Organização do projeto
+
+A estrutura foi dividida em camadas para separar as responsabilidades e facilitar a manutenção:
+
+- `Entities/`: contém a entidade `Avaliacao` e as constantes de mensagens em `MensagensValidacao`.
+- `Services/AvaliacaoService.cs`: concentra as regras de negócio, o cadastro e as consultas, utilizando métodos assíncronos e o contexto `_context`.
+- `Data/`: responsável pelo mapeamento das entidades com o banco Oracle e pela preparação da tabela.
+- `Program.cs`: controla a conexão com o banco, a navegação pelo menu e a entrada e saída de dados.
 
 ## Como executar
-Requer SDK .NET 10, acesso à rede da FIAP e conta Oracle com permissão e quota para criar tabela. Na pasta do projeto:
+
+**Requisitos:**
+- SDK .NET 10 instalado.
+- Acesso à rede da FIAP.
+- Conta Oracle com permissão e quota para criação de tabelas.
+
+Na pasta do projeto, execute:
+
 ```powershell
 dotnet build
 dotnet run
 ```
-Informe usuário e senha Oracle no console a cada execução; a senha é mascarada no terminal interativo. As credenciais não são salvas. Servidor: `oracle.fiap.com.br:1521/ORCL`, com compatibilidade SQL Oracle 19c.
 
-## Tabela criada
-`AC_AVALIACOES`, criada somente se estiver ausente no schema conectado, sem `EnsureCreated`.
-| Coluna | Tipo e regra |
+Durante a inicialização, informe o usuário e a senha do Oracle. As credenciais são solicitadas a cada execução e não ficam armazenadas. No terminal interativo, a senha é exibida de forma mascarada.
+
+**Configurações de conexão:**
+- Servidor: `oracle.fiap.com.br:1521/ORCL`
+- Compatibilidade SQL: Oracle Database 19c.
+
+## Estrutura da tabela
+
+A tabela `AC_AVALIACOES` é criada automaticamente apenas quando ainda não existe no schema do usuário conectado. A implementação utiliza SQL diretamente, sem depender do método `EnsureCreated`.
+
+| Coluna | Tipo e regras |
 |---|---|
-| ID | NUMBER(10), identity e PRIMARY KEY |
+| ID | NUMBER(10), identity e chave primária (PRIMARY KEY) |
 | CODIGO_CARD | NUMBER(10), obrigatório e maior que zero |
-| NOME_AVALIADOR | VARCHAR2(100 CHAR), obrigatório, de 2 a 100 caracteres após trim |
-| NOME_NORMALIZADO | Coluna virtual calculada por UPPER(TRIM(NOME_AVALIADOR)) |
-| NOTA | NUMBER(10), obrigatório, de 1 a 5 |
-| COMENTARIO | VARCHAR2(500 CHAR), opcional; vazio é salvo como NULL |
-| DATA_AVALIACAO | TIMESTAMP(7), obrigatório; horário UTC |
-A constraint `AC_UQ_AVALIADOR_CARD` garante UNIQUE em `(NOME_NORMALIZADO, CODIGO_CARD)`. Nome normalizado é uma coluna técnica, não um atributo adicional da entidade. Se houver uma tabela com estrutura antiga, use um schema destinado a esta versão ou solicite sua migração antes de executar.
-
-## Roteiro de demonstração
-1. Execute, informe as credenciais Oracle e confira a preparação da tabela.
-2. Avalie o cartão 1 como Ana, com nota 5 e comentário vazio; liste e confira `(sem comentário)`.
-3. Tente avaliar o cartão 1 como ANA: a duplicidade deve ser recusada; tente nota 6 e código 0.
-4. Avalie o cartão 1 como Bruno, com nota 3; busque pelo código e consulte a média 4,00.
-5. Digite texto em um campo numérico e uma opção inexistente; confira as mensagens e o retorno ao menu.
-6. Saia com 0, execute novamente e liste para conferir a persistência; consulte um cartão sem avaliações.
+| NOME_AVALIADOR | VARCHAR2(100 CHAR), obrigatório, com tamanho entre 2 e 100 caracteres após trim |
+| NOME_NORMALIZADO | Coluna virtual calculada com UPPER(TRIM(NOME_AVALIADOR)) |
+| NOTA | NUMBER(10), obrigatório, com valores entre 1 e 5 |
+| COM
