@@ -19,7 +19,7 @@ while (true)
         // prepara o banco antes de permitir o cadastro de avaliações
         InicializadorBanco.Preparar(banco);
 
-        Console.WriteLine("Banco pronto para registrar avaliações.");
+        Console.WriteLine("\nConexão estabelecida e banco pronto para uso.");
 
         var avaliacaoService = new AvaliacaoService(banco);
 
@@ -32,22 +32,25 @@ while (true)
     }
     catch (Exception erro) when (erro is OracleException or DbUpdateException)
     {
-        Console.WriteLine("Não foi possível preparar o Oracle. Confira a rede FIAP, as credenciais e a permissão para criar tabela.");
+        Console.WriteLine("\nFalha na conexão com o Oracle.");
+        Console.WriteLine("Confira a rede FIAP, as credenciais e as permissões do usuário.");
     }
     catch (Exception erro) when (erro is ArgumentException or InvalidOperationException)
     {
-        Console.WriteLine(erro.Message);
+        Console.WriteLine($"\nAtenção: {erro.Message}");
     }
     catch (Exception)
     {
-        Console.WriteLine("Não foi possível iniciar. Tente novamente ou encerre o console.");
+        Console.WriteLine("\nNão foi possível iniciar o sistema.");
+        Console.WriteLine("Verifique as configurações e tente novamente.");
     }
 }
 
 // solicita as credenciais e configura a conexão com o Oracle
 static BancoContext Conectar()
 {
-    Console.WriteLine("CONEXÃO ORACLE - oracle.fiap.com.br:1521/ORCL");
+    Console.WriteLine("\n========== CONEXÃO ORACLE ==========");
+    Console.WriteLine("Servidor: oracle.fiap.com.br:1521/ORCL");
 
     string usuario = Ler("Usuário do Oracle: ").Trim();
     string senha = LerSenha("Senha do Oracle: ");
@@ -103,10 +106,11 @@ static async Task ExecutarMenu(AvaliacaoService avaliacaoService)
                     break;
 
                 case "0":
+                    Console.WriteLine("\nSistema encerrado. Obrigado por utilizar o Nexo Nuclear!");
                     return;
 
                 default:
-                    Console.WriteLine("Opção inválida.");
+                    Console.WriteLine("\nOpção não reconhecida. Escolha uma das opções do menu.");
                     break;
             }
         }
@@ -116,19 +120,22 @@ static async Task ExecutarMenu(AvaliacaoService avaliacaoService)
         }
         catch (Exception erro) when (erro is OracleException or DbUpdateException)
         {
-            Console.WriteLine("Não foi possível acessar o Oracle. Confira a conexão e tente novamente.");
+            Console.WriteLine("\nNão foi possível acessar o banco de dados.");
+            Console.WriteLine("Verifique a conexão e tente novamente.");
         }
         catch (Exception erro) when (erro is ArgumentException or ValidationException or FormatException)
         {
-            Console.WriteLine($"Não foi possível concluir: {erro.Message}");
+            Console.WriteLine($"\nNão foi possível concluir a operação: {erro.Message}");
         }
         catch (Exception erro) when (erro is InvalidOperationException or IOException or UnauthorizedAccessException)
         {
-            Console.WriteLine("Não foi possível concluir a operação. Tente novamente.");
+            Console.WriteLine("\nA operação não pôde ser concluída.");
+            Console.WriteLine("Tente novamente pelo menu principal.");
         }
         catch (Exception)
         {
-            Console.WriteLine("Ocorreu um erro inesperado. Tente novamente pelo menu.");
+            Console.WriteLine("\nOcorreu um erro inesperado durante a operação.");
+            Console.WriteLine("Retorne ao menu e tente novamente.");
         }
     }
 }
@@ -136,17 +143,22 @@ static async Task ExecutarMenu(AvaliacaoService avaliacaoService)
 // apresenta as operações disponíveis para o usuário
 static void ExibirMenu()
 {
-    Console.WriteLine("\nNEXO NUCLEAR - AVALIAÇÃO DE CARTÕES");
+    Console.WriteLine("\n========== NEXO NUCLEAR ==========");
+    Console.WriteLine("       AVALIAÇÃO DE CARTÕES");
+    Console.WriteLine("----------------------------------");
     Console.WriteLine("1 - Avaliar cartão");
     Console.WriteLine("2 - Listar todas as avaliações");
     Console.WriteLine("3 - Buscar por código do cartão");
-    Console.WriteLine("4 - Média de um cartão");
+    Console.WriteLine("4 - Consultar média de um cartão");
     Console.WriteLine("0 - Sair");
+    Console.WriteLine("----------------------------------");
 }
 
 // coleta os dados e solicita ao serviço o cadastro de uma nova avaliação
 static async Task Avaliar(AvaliacaoService avaliacaoService)
 {
+    Console.WriteLine("\n========== NOVA AVALIAÇÃO ==========");
+
     int codigo = LerNumero("Código do cartão: ");
     string nome = Ler("Nome do avaliador: ");
     int nota = LerNumero("Nota (1 a 5): ");
@@ -162,22 +174,35 @@ static async Task Avaliar(AvaliacaoService avaliacaoService)
 
     await avaliacaoService.Cadastrar(avaliacao);
 
-    Console.WriteLine("Avaliação cadastrada.");
+    Console.WriteLine("\nAvaliação cadastrada com sucesso!");
+    Console.WriteLine($"Cartão: {codigo}");
+    Console.WriteLine($"Avaliador: {nome}");
+    Console.WriteLine($"Nota registrada: {nota}/5");
 }
 
 // recupera todas as avaliações cadastradas e envia para exibição
 static async Task ListarTodas(AvaliacaoService avaliacaoService)
 {
+    Console.WriteLine("\n========== TODAS AS AVALIAÇÕES ==========");
+
     var avaliacoes = await avaliacaoService.Listar();
+
     Mostrar(avaliacoes);
 }
 
 // busca as avaliações vinculadas ao código informado
 static async Task BuscarPorCard(AvaliacaoService avaliacaoService)
 {
+    Console.WriteLine("\n========== BUSCAR AVALIAÇÕES ==========");
+
     int codigo = LerNumero("Código do cartão: ");
 
     var avaliacoes = await avaliacaoService.BuscarPorCard(codigo);
+
+    if (avaliacoes.Count > 0)
+    {
+        Console.WriteLine($"\nForam encontradas {avaliacoes.Count} avaliação(ões) para o cartão {codigo}.");
+    }
 
     Mostrar(avaliacoes);
 }
@@ -185,17 +210,19 @@ static async Task BuscarPorCard(AvaliacaoService avaliacaoService)
 // calcula a média das notas de um cartão e trata a ausência de avaliações
 static async Task MostrarMedia(AvaliacaoService avaliacaoService)
 {
+    Console.WriteLine("\n========== MÉDIA DO CARTÃO ==========");
+
     int codigo = LerNumero("Código do cartão: ");
 
     double? media = await avaliacaoService.CalcularMedia(codigo);
 
     if (media == null)
     {
-        Console.WriteLine("Este cartão ainda não tem avaliações.");
+        Console.WriteLine("\nEste cartão ainda não possui avaliações.");
         return;
     }
 
-    Console.WriteLine($"Média do cartão: {media.Value:F2}");
+    Console.WriteLine($"\nMédia das avaliações do cartão {codigo}: {media.Value:F2}/5");
 }
 
 // exibe as avaliações e trata campos opcionais e conversão de horário
@@ -203,9 +230,12 @@ static void Mostrar(List<Avaliacao> avaliacoes)
 {
     if (avaliacoes.Count == 0)
     {
-        Console.WriteLine("Nenhuma avaliação encontrada.");
+        Console.WriteLine("\nNenhuma avaliação foi encontrada.");
         return;
     }
+
+    Console.WriteLine($"\nTotal de avaliações: {avaliacoes.Count}");
+    Console.WriteLine("----------------------------------");
 
     foreach (var avaliacao in avaliacoes)
     {
@@ -215,7 +245,13 @@ static void Mostrar(List<Avaliacao> avaliacoes)
         // interpreta a data armazenada como UTC e converte para o horário local
         DateTime dataLocal = DateTime.SpecifyKind(avaliacao.Data, DateTimeKind.Utc).ToLocalTime();
 
-        Console.WriteLine($"Avaliação {avaliacao.Id} | cartão {avaliacao.CodigoCard} | {avaliacao.NomeAvaliador} | nota {avaliacao.Nota} | {dataLocal:dd/MM/yyyy HH:mm} | {comentario}");
+        Console.WriteLine($"ID: {avaliacao.Id}");
+        Console.WriteLine($"Cartão: {avaliacao.CodigoCard}");
+        Console.WriteLine($"Avaliador: {avaliacao.NomeAvaliador}");
+        Console.WriteLine($"Nota: {avaliacao.Nota}/5");
+        Console.WriteLine($"Data: {dataLocal:dd/MM/yyyy HH:mm}");
+        Console.WriteLine($"Comentário: {comentario}");
+        Console.WriteLine("----------------------------------");
     }
 }
 
